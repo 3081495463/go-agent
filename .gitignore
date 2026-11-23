@@ -1,0 +1,45 @@
+# Environment secrets
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# Playwright MCP 运行时快照
+.playwright-mcp/
+
+# 浏览器自检截图（运行时产物）
+check-*.png
+check-*.jpg
+*-preview-*.png
+*-preview-*.jpg
+*-modal.png
+*-modal.jpg
+
+# Runtime workspace files
+workspace/*
+
+# Persisted conversations (runtime data)
+memory/*.json
+memory/*.tmp
+
+# Go build outputs
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Coverage
+coverage.out
