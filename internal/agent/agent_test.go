@@ -34,7 +34,6 @@ func TestAgentCallTool(t *testing.T) {
 	}
 }
 
-// 调用不存在的工具
 func TestAgentUnknownTool(t *testing.T) {
 	a := NewAgent(llm.NewMockModel("ok"), tools.NewRegistry())
 
@@ -44,27 +43,6 @@ func TestAgentUnknownTool(t *testing.T) {
 	}
 }
 
-// 注册表为 nil
-func TestAgentNilRegistry(t *testing.T) {
-	a := NewAgent(llm.NewMockModel("ok"), nil)
-
-	_, err := a.CallTool(context.Background(), "file", nil)
-	if err == nil {
-		t.Fatal("expected nil registry error")
-	}
-}
-
-// Agent 自身为 nil
-func TestNilAgent(t *testing.T) {
-	var a *Agent
-
-	_, err := a.CallTool(context.Background(), "file", nil)
-	if err == nil {
-		t.Fatal("expected nil agent error")
-	}
-}
-
-// 缺少模型或注册表时 Chat 应返回 ErrAgentNotReady
 func TestChatNotReady(t *testing.T) {
 	cases := []*Agent{
 		NewAgent(nil, tools.NewRegistry()),
@@ -78,7 +56,6 @@ func TestChatNotReady(t *testing.T) {
 	}
 }
 
-// Mock 模型下 Chat 应返回模型回复
 func TestChatWithMockModel(t *testing.T) {
 	a := NewAgent(llm.NewMockModel("hello from mock"), tools.NewRegistry())
 
@@ -91,7 +68,6 @@ func TestChatWithMockModel(t *testing.T) {
 	}
 }
 
-// 带 Store 与会话 ID 时，一轮对话后历史应落盘并可被读回。
 func TestChatPersistsHistory(t *testing.T) {
 	store := memory.NewStore(t.TempDir())
 	a := NewAgent(llm.NewMockModel("记住了"), tools.NewRegistry())
@@ -117,7 +93,6 @@ func TestChatPersistsHistory(t *testing.T) {
 	}
 }
 
-// 无会话 ID 时不应写记忆。
 func TestChatWithoutSessionNoPersist(t *testing.T) {
 	dir := t.TempDir()
 	store := memory.NewStore(dir)

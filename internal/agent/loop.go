@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
 	"go-agent/internal/llm"
 	"go-agent/internal/memory"
 )
@@ -29,6 +31,8 @@ func (a *Agent) Run(
 	if a.SkillPrompt != "" {
 		systemContent += a.SkillPrompt
 	}
+	// 注入长期保留的用户偏好/关键信息。
+	systemContent += a.notesPrompt(sessionID)
 
 	// 从长期记忆恢复历史（无 Store 或无会话 ID 时为空）。
 	history := a.loadHistory(sessionID)
@@ -118,7 +122,7 @@ func (a *Agent) Run(
 	return "", fmt.Errorf("Agent 达到最大工具调用次数")
 }
 
-// loadHistory 读取指定会话的历史对话消息；不可用时返回空切片。
+// loadHistory 读取指定会话的近期对话消息；不可用时返回空切片。
 func (a *Agent) loadHistory(sessionID string) []llm.Message {
 	if a.Store == nil || sessionID == "" {
 		return nil
@@ -129,15 +133,31 @@ func (a *Agent) loadHistory(sessionID string) []llm.Message {
 		return nil
 	}
 
-	history := conv.Messages
-	if len(history) > maxHistory {
-		history = history[len(history)-maxHistory:]
-	}
-
-	return history
+	return memory.CompactMessages(conv.Messages, maxHistory)
 }
 
-// saveHistory 把本轮用户输入与助手最终回复追加到长期记忆并落盘。
+// notesPrompt 把长期保留的关键信息（偏好/约定）拼成一段 system 提示。
+func (a *Agent) notesPrompt(sessionID string) string {
+	if a.Store == nil || sessionID == "" {
+		return ""
+	}
+
+	conv, err := a.Store.Load(sessionID)
+	if err != nil || len(conv.Notes) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("\n\n## 已记录的用户偏好与关键信息\n")
+	for _, n := range conv.Notes {
+		b.WriteString("- ")
+		b.WriteString(n.Content)
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// saveHistory 把本轮对话精简后落盘；可复用的关键信息沉淀到 Notes。
 func (a *Agent) saveHistory(sessionID, input string, answer llm.Message) {
 	if a.Store == nil || sessionID == "" {
 		return
@@ -149,16 +169,15 @@ func (a *Agent) saveHistory(sessionID, input string, answer llm.Message) {
 	}
 
 	conv.ID = sessionID
-	conv.Messages = append(conv.Messages,
-		llm.Message{Role: "user", Content: input},
-		llm.Message{Role: "assistant", Content: answer.Content},
+	conv.Messages = memory.CompactMessages(
+		append(conv.Messages,
+			llm.Message{Role: "user", Content: input},
+			llm.Message{Role: "assistant", Content: answer.Content},
+		),
+		maxHistory,
 	)
 
-	if len(conv.Messages) > maxHistory {
-		conv.Messages = conv.Messages[len(conv.Messages)-maxHistory:]
-	}
-
-	conv.Summary = memory.BuildSummary(conv.Messages)
+	conv.Notes = memory.ExtractNotes(input, conv.Notes)
 
 	_ = a.Store.Save(conv)
 }

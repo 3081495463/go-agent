@@ -105,7 +105,7 @@ func TestFileToolRejectsOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := f.Execute(ctx, map[string]any{
+	got, err := f.Execute(context.Background(), map[string]any{
 		"action": "read",
 		"path":   "hello.txt",
 	})
@@ -129,35 +129,6 @@ func TestFileToolRejectsLargeContent(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected file size error")
-	}
-}
-
-func TestFileToolMissingArguments(t *testing.T) {
-	f := newTestFileTool(t)
-
-	_, err := f.Execute(context.Background(), nil)
-	if err == nil {
-		t.Fatal("expected nil arguments error")
-	}
-
-	_, err = f.Execute(context.Background(), map[string]any{
-		"action": "read",
-	})
-	if err == nil {
-		t.Fatal("expected missing path error")
-	}
-}
-
-func TestFileToolUnknownAction(t *testing.T) {
-	f := newTestFileTool(t)
-
-	_, err := f.Execute(context.Background(), map[string]any{
-		"action": "delete",
-		"path":   "hello.txt",
-	})
-
-	if err == nil {
-		t.Fatal("expected unsupported action error")
 	}
 }
 

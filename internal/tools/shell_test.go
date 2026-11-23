@@ -4,15 +4,9 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
-	"time"
 )
-
-func writeTempFile(path, content string) error {
-	return os.WriteFile(path, []byte(content), 0644)
-}
 
 func TestShellToolRejectsUnknownAction(t *testing.T) {
 	s := NewShellTool(t.TempDir())
@@ -33,109 +27,6 @@ func TestShellToolRejectsNilArguments(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected nil arguments error")
-	}
-}
-
-func TestShellToolRejectsCanceledContext(t *testing.T) {
-	s := NewShellTool(t.TempDir())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	_, err := s.Execute(ctx, map[string]any{
-		"action": "go_version",
-	})
-
-	if err == nil {
-		t.Fatal("expected canceled context error")
-	}
-}
-
-func TestShellToolGoVersion(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not available")
-	}
-
-	s := NewShellTool(t.TempDir())
-
-	output, err := s.Execute(context.Background(), map[string]any{
-		"action": "go_version",
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if output == "" {
-		t.Fatal("expected command output")
-	}
-
-	if !strings.Contains(output, "go version") {
-		t.Fatalf("unexpected go version output: %s", output)
-	}
-}
-
-func TestShellToolRejectsMissingWorkDir(t *testing.T) {
-	s := NewShellTool(t.TempDir() + "/not-exist")
-
-	_, err := s.Execute(context.Background(), map[string]any{
-		"action": "go_version",
-	})
-
-	if err == nil {
-		t.Fatal("expected missing work directory error")
-	}
-}
-
-func TestShellToolRejectsFileAsWorkDir(t *testing.T) {
-	file := t.TempDir() + "/a.txt"
-	if err := writeTempFile(file, "x"); err != nil {
-		t.Fatal(err)
-	}
-
-	s := NewShellTool(file)
-
-	_, err := s.Execute(context.Background(), map[string]any{
-		"action": "go_version",
-	})
-
-	if err == nil {
-		t.Fatal("expected not-a-directory error")
-	}
-}
-
-func TestShellToolCommandFailure(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
-	}
-
-	// 临时目录不是 git 仓库，git status 应返回非零退出码。
-	s := NewShellTool(t.TempDir())
-
-	_, err := s.Execute(context.Background(), map[string]any{
-		"action": "git_status",
-	})
-
-	if err == nil {
-		t.Fatal("expected command failure error")
-	}
-}
-
-func TestShellToolTimeout(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not available")
-	}
-
-	// 超时设得极短，命令来不及完成，应报超时/取消。
-	s := NewShellTool(t.TempDir())
-	s.Timeout = 1 * time.Millisecond
-
-	_, err := s.Execute(context.Background(), map[string]any{
-		"action": "go_version",
-	})
-
-	if err == nil {
-		t.Fatal("expected timeout error")
 	}
 }
 

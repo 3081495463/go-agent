@@ -12,8 +12,8 @@ logs/
 # 浏览器自检截图（运行时产物）
 check-*.png
 check-*.jpg
-*-preview-*.png
-*-preview-*.jpg
+*-preview*.png
+*-preview*.jpg
 *-modal.png
 *-modal.jpg
 

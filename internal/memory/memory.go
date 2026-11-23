@@ -14,10 +14,23 @@ import (
 // idPattern 只允许字母、数字、下划线、短横线，杜绝路径穿越。
 var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
+// Conversation 是一次会话的持久化结构。
+//
+// 存储分两层：
+//   - Notes：跨会话可复用的关键信息（用户偏好、常用约定、关键事实），
+//     由调用方按需写入，长期保留、体量小。
+//   - Messages：近期对话的精简记录，只保留最近若干条，用于衔接上下文；
+//     不再整段堆积每轮的长回复。
 type Conversation struct {
 	ID       string        `json:"id"`
-	Summary  string        `json:"summary"`
+	Notes    []Note        `json:"notes,omitempty"`
 	Messages []llm.Message `json:"messages"`
+}
+
+// Note 是一条可复用的关键信息。
+type Note struct {
+	Key     string `json:"key"`     // 去重键，例如 "style"、"project"
+	Content string `json:"content"` // 偏好或事实内容
 }
 
 type Store struct {
@@ -96,4 +109,19 @@ func (s *Store) Load(id string) (Conversation, error) {
 	}
 
 	return c, nil
+}
+
+// UpsertNote 写入或更新一条关键信息（按 Key 去重）。
+// Notes 上限由调用方控制；超出时不新增。
+func (c *Conversation) UpsertNote(key, content string) {
+	if key == "" || content == "" {
+		return
+	}
+	for i := range c.Notes {
+		if c.Notes[i].Key == key {
+			c.Notes[i].Content = content
+			return
+		}
+	}
+	c.Notes = append(c.Notes, Note{Key: key, Content: content})
 }

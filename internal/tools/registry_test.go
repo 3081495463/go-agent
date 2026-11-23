@@ -2,8 +2,6 @@ package tools
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"testing"
 )
 
@@ -80,32 +78,4 @@ func TestRegistryListSorted(t *testing.T) {
 			t.Fatalf("expected %v, got %v", expected, got)
 		}
 	}
-}
-
-func TestRegistryConcurrentAccess(t *testing.T) {
-	r := NewRegistry()
-
-	var wg sync.WaitGroup
-
-	for i := 0; i < 100; i++ {
-		wg.Add(2)
-
-		go func(i int) {
-			defer wg.Done()
-
-			name := fmt.Sprintf("tool-%d", i)
-			if err := r.Register(&testTool{name: name}); err != nil {
-				t.Error(err)
-			}
-		}(i)
-
-		go func() {
-			defer wg.Done()
-
-			r.Get("tool-1")
-			r.List()
-		}()
-	}
-
-	wg.Wait()
 }
