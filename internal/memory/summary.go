@@ -9,15 +9,23 @@ import (
 // maxNotes 长期保留的关键信息条数上限，避免记忆无限膨胀。
 const maxNotes = 20
 
-// CompactMessages 只保留最近 maxHistory 条非空对话，丢弃冗长的中间产物。
-// 这里不做模型摘要（不额外调用 LLM），只做截断与清理。
+// maxHistoryContent 单条历史消息落盘时保留的最大字符数，超出截断，
+// 避免把长回复、过程性描述整段写进记忆。
+const maxHistoryContent = 500
+
+// CompactMessages 只保留最近 maxHistory 条非空对话，并压缩每条长度；
+// 不做模型摘要（不额外调用 LLM），只做截断与清理。
 func CompactMessages(messages []llm.Message, maxHistory int) []llm.Message {
 	kept := make([]llm.Message, 0, len(messages))
 	for _, m := range messages {
-		if strings.TrimSpace(m.Content) == "" {
+		content := strings.TrimSpace(m.Content)
+		if content == "" {
 			continue
 		}
-		kept = append(kept, m)
+		if len(content) > maxHistoryContent {
+			content = content[:maxHistoryContent] + "…"
+		}
+		kept = append(kept, llm.Message{Role: m.Role, Content: content, ToolCallID: m.ToolCallID})
 	}
 	if len(kept) > maxHistory {
 		kept = kept[len(kept)-maxHistory:]
